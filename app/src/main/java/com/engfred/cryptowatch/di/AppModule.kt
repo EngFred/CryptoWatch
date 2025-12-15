@@ -32,7 +32,7 @@ object AppModule {
     @Singleton
     fun provideDatabase(app: Application): CryptoDatabase {
         return Room.databaseBuilder(app, CryptoDatabase::class.java, "crypto_db")
-            .fallbackToDestructiveMigration() // For development safety
+            .fallbackToDestructiveMigration(true)
             .build()
     }
 

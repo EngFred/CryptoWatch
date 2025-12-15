@@ -1,26 +1,33 @@
 package com.engfred.cryptowatch.ui.list
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemContentType
 import androidx.paging.compose.itemKey
-import com.engfred.cryptowatch.domain.model.CryptoCoin
-import com.engfred.cryptowatch.ui.common.CoinImage
-import com.engfred.cryptowatch.ui.common.SparklineChart
+import com.engfred.cryptowatch.ui.list.components.CryptoListItem
 
 @Composable
 fun CryptoListScreen(
@@ -30,20 +37,32 @@ fun CryptoListScreen(
     val coins = viewModel.coinsFlow.collectAsLazyPagingItems()
     val query by viewModel.searchQuery.collectAsState()
 
-    Column(modifier = Modifier.fillMaxSize().background(Color(0xFF121212))) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFF121212))
+            .systemBarsPadding()
+    ) {
         TextField(
             value = query,
             onValueChange = viewModel::onSearchQueryChanged,
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp),
+            shape = RoundedCornerShape(12.dp),
             placeholder = { Text("Search coins...", color = Color.Gray) },
             leadingIcon = { Icon(Icons.Default.Search, null, tint = Color.Gray) },
             colors = TextFieldDefaults.colors(
                 focusedContainerColor = Color(0xFF1E1E1E),
                 unfocusedContainerColor = Color(0xFF1E1E1E),
                 focusedTextColor = Color.White,
-                unfocusedTextColor = Color.White
+                unfocusedTextColor = Color.White,
+                focusedIndicatorColor = Color.Transparent,
+                unfocusedIndicatorColor = Color.Transparent
             )
         )
+
+        Spacer(modifier = Modifier.height(8.dp))
 
         LazyColumn(modifier = Modifier.fillMaxSize()) {
             items(
@@ -57,27 +76,6 @@ fun CryptoListScreen(
                     HorizontalDivider(color = Color.DarkGray)
                 }
             }
-        }
-    }
-}
-
-@Composable
-fun CryptoListItem(coin: CryptoCoin, onCoinClick: (String) -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth().clickable { onCoinClick(coin.id) }.padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        CoinImage(url = coin.image, contentDescription = coin.name)
-        Spacer(modifier = Modifier.width(12.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(coin.name, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-            Text(coin.symbol, color = Color.Gray, fontSize = 14.sp)
-        }
-        val chartColor = if (coin.priceChangePercentage24h >= 0) Color(0xFF00C853) else Color(0xFFD50000)
-        SparklineChart(coin.sparkline, Modifier.width(80.dp).height(40.dp).padding(horizontal = 8.dp), chartColor)
-        Column(horizontalAlignment = Alignment.End) {
-            Text("$${coin.currentPrice}", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-            Text("${coin.priceChangePercentage24h}%", color = chartColor, fontSize = 14.sp)
         }
     }
 }

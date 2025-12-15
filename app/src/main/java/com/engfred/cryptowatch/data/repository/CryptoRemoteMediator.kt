@@ -11,6 +11,7 @@ import com.engfred.cryptowatch.data.local.CryptoEntity
 import com.engfred.cryptowatch.data.local.RemoteKeys
 import com.engfred.cryptowatch.data.remote.CoinGeckoApi
 import com.engfred.cryptowatch.data.mapper.toEntity
+import kotlinx.coroutines.delay
 import retrofit2.HttpException
 import java.io.IOException
 
@@ -28,6 +29,12 @@ class CryptoRemoteMediator(
         state: PagingState<Int, CryptoEntity>
     ): MediatorResult {
         return try {
+            // Forcing a 2-second pause before every network call.
+            // so we never hit the 30 calls/min limit.
+            if (loadType != LoadType.REFRESH) {
+                delay(2000)
+            }
+
             Log.d(TAG, "Mediator: load() called with LoadType: $loadType, Query: '$query'")
 
             val page = when (loadType) {
@@ -85,7 +92,7 @@ class CryptoRemoteMediator(
                         db.dao().clearRemoteKeys()
                         db.dao().clearCoins()
                     } else {
-                        Log.d(TAG, "Mediator: Refreshing search results (Keeping non-conflicting data)")
+                        Log.d(TAG, "Mediator: Refreshing search results")
                     }
                 }
 
@@ -106,7 +113,11 @@ class CryptoRemoteMediator(
             Log.e(TAG, "Mediator Error (Network): ${e.localizedMessage}")
             MediatorResult.Error(e)
         } catch (e: HttpException) {
-            Log.e(TAG, "Mediator Error (HTTP): ${e.localizedMessage}")
+            Log.e(TAG, "Mediator Error (HTTP): ${e.code()} - ${e.message}")
+
+            if (e.code() == 429) {
+                Log.e(TAG, "Mediator: RATE LIMIT HIT! Slowing down.")
+            }
             MediatorResult.Error(e)
         }
     }

@@ -38,7 +38,12 @@ class CryptoRepositoryImpl @Inject constructor(
         }
 
         return Pager(
-            config = PagingConfig(pageSize = 20, enablePlaceholders = false),
+            // Increased pageSize to 50 to reduce network calls (Rate Limit protection)
+            config = PagingConfig(
+                pageSize = 50,
+                enablePlaceholders = false,
+                initialLoadSize = 50
+            ),
             remoteMediator = CryptoRemoteMediator(query, api, db),
             pagingSourceFactory = pagingSourceFactory
         ).flow.map { pagingData ->
@@ -49,14 +54,14 @@ class CryptoRepositoryImpl @Inject constructor(
     override fun getCoin(id: String): Flow<CryptoCoin> {
         Log.d(TAG, "Repo: Observing coin details for ID: $id")
         return db.dao().getCoin(id).map {
-            it?.toDomain() ?: throw Exception("Coin not found")
+            it.toDomain()
         }
     }
 
     override suspend fun triggerSync(): Result<Unit> {
         Log.d(TAG, "Repo: Background sync started...")
         return try {
-            val coins = api.getCoins(page = 1)
+            val coins = api.getCoins(page = 1, perPage = 50)
             Log.d(TAG, "Repo: Sync fetched ${coins.size} items. Saving to DB.")
             db.dao().insertAll(coins.map { it.toEntity(1) })
             Log.d(TAG, "Repo: Sync complete.")

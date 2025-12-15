@@ -15,7 +15,6 @@ interface CryptoDao {
     @Query("SELECT * FROM coins ORDER BY page ASC, marketCap DESC")
     fun getCoinsPagingSource(): PagingSource<Int, CryptoEntity>
 
-    // Search Query for Paging
     @Query("""
         SELECT * FROM coins 
         WHERE name LIKE '%' || :query || '%' 
@@ -30,7 +29,6 @@ interface CryptoDao {
     @Query("DELETE FROM coins")
     suspend fun clearCoins()
 
-    // Remote Keys Logic
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAllRemoteKeys(remoteKeys: List<RemoteKeys>)
 
