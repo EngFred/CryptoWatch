@@ -56,7 +56,7 @@ Try the latest build on your device:
 
 The app follows strict **Clean Architecture** principles to ensure scalability and testability.
 
-```mermaid
+```text
 graph TD
     UI[Presentation Layer<br>(Compose + ViewModel)] --> Domain[Domain Layer<br>(UseCases + Models)]
     Domain --> Data[Data Layer<br>(Repository Impl)]
@@ -90,10 +90,3 @@ Contributions are welcome! Please fork the repository and submit a pull request.
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
-
-<p align="center">
-  Built with ❤️ by <a href="https://github.com/EngFred">EngFred</a>
-</p>
-
