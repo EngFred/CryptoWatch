@@ -1,5 +1,6 @@
 package com.engfred.cryptowatch.data.repository
 
+import android.util.Log
 import androidx.paging.ExperimentalPagingApi
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
@@ -15,6 +16,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 
+private const val TAG = "CryptoDebug"
+
 class CryptoRepositoryImpl @Inject constructor(
     private val api: CoinGeckoApi,
     private val db: CryptoDatabase
@@ -22,9 +25,16 @@ class CryptoRepositoryImpl @Inject constructor(
 
     @OptIn(ExperimentalPagingApi::class)
     override fun getCoins(query: String): Flow<PagingData<CryptoCoin>> {
+        Log.d(TAG, "Repo: Creating new Pager. Query: '$query'")
+
         val pagingSourceFactory = {
-            if (query.isEmpty()) db.dao().getCoinsPagingSource()
-            else db.dao().searchCoinsPagingSource(query)
+            if (query.isEmpty()) {
+                Log.d(TAG, "Repo: Using Standard Paging Source")
+                db.dao().getCoinsPagingSource()
+            } else {
+                Log.d(TAG, "Repo: Using Search Paging Source for '$query'")
+                db.dao().searchCoinsPagingSource(query)
+            }
         }
 
         return Pager(
@@ -37,16 +47,22 @@ class CryptoRepositoryImpl @Inject constructor(
     }
 
     override fun getCoin(id: String): Flow<CryptoCoin> {
-        return db.dao().getCoin(id).map { it?.toDomain() ?: throw Exception("Coin not found") }
+        Log.d(TAG, "Repo: Observing coin details for ID: $id")
+        return db.dao().getCoin(id).map {
+            it?.toDomain() ?: throw Exception("Coin not found")
+        }
     }
 
     override suspend fun triggerSync(): Result<Unit> {
+        Log.d(TAG, "Repo: Background sync started...")
         return try {
-            // Worker Sync: Fetch page 1 to update top movers
             val coins = api.getCoins(page = 1)
+            Log.d(TAG, "Repo: Sync fetched ${coins.size} items. Saving to DB.")
             db.dao().insertAll(coins.map { it.toEntity(1) })
+            Log.d(TAG, "Repo: Sync complete.")
             Result.success(Unit)
         } catch (e: Exception) {
+            Log.e(TAG, "Repo: Sync failed: ${e.message}")
             Result.failure(e)
         }
     }
