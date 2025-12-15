@@ -58,11 +58,11 @@ The app follows strict **Clean Architecture** principles to ensure scalability a
 
 ```mermaid
 graph TD
-    UI[Presentation Layer<br>(Compose + ViewModel)] --> Domain[Domain Layer<br>(UseCases + Models)]
-    Domain --> Data[Data Layer<br>(Repository Impl)]
-    Data --> Remote[Remote Data Source<br>(Retrofit + API)]
-    Data --> Local[Local Data Source<br>(Room + DAO)]
-    Local --> Cache[(Device Storage)]
+    UI["Presentation Layer<br>(Compose + ViewModel)"] --> Domain["Domain Layer<br>(UseCases + Models)"]
+    Domain --> Data["Data Layer<br>(Repository Impl)"]
+    Data --> Remote["Remote Data Source<br>(Retrofit + API)"]
+    Data --> Local["Local Data Source<br>(Room + DAO)"]
+    Local --> Cache[("Device Storage")]
 ```
 
 Domain Layer: Contains pure business logic (UseCases) and plain Kotlin models. No Android dependencies.
