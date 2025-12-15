@@ -56,7 +56,7 @@ Try the latest build on your device:
 
 The app follows strict **Clean Architecture** principles to ensure scalability and testability.
 
-```text
+```mermaid
 graph TD
     UI[Presentation Layer<br>(Compose + ViewModel)] --> Domain[Domain Layer<br>(UseCases + Models)]
     Domain --> Data[Data Layer<br>(Repository Impl)]
