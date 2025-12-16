@@ -13,7 +13,7 @@
 -keepattributes InnerClasses, EnclosingMethod
 
 # ----------------------------------------------------------------------------
-# 2.Data Models (The #1 Cause of Crashes)
+# 2.Data Models
 # ----------------------------------------------------------------------------
 # We MUST tell R8 not to rename the classes you use for API responses and Database entities.
 
