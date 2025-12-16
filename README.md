@@ -22,7 +22,7 @@
 
 Try the latest build on your device:
 
-[![Download APK](https://img.shields.io/badge/Download_APK-GitHub_Release-2ea44f?style=for-the-badge&logo=github)](https://github.com/EngFred/CryptoWatch/releases/download/v1.0/CryptoWatchLG.apk)
+[![Download APK](https://img.shields.io/badge/Download_APK-GitHub_Release-2ea44f?style=for-the-badge&logo=github)](https://github.com/EngFred/CryptoWatch/releases/download/v1.0/CryptoWatch.apk)
 
 ---
 
