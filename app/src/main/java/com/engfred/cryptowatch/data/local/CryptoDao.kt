@@ -37,4 +37,7 @@ interface CryptoDao {
 
     @Query("DELETE FROM remote_keys")
     suspend fun clearRemoteKeys()
+
+    @Query("SELECT lastUpdated FROM remote_keys ORDER BY lastUpdated DESC LIMIT 1")
+    suspend fun getCreationTime(): Long?
 }

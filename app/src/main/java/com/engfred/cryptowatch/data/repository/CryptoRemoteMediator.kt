@@ -14,6 +14,7 @@ import com.engfred.cryptowatch.data.mapper.toEntity
 import kotlinx.coroutines.delay
 import retrofit2.HttpException
 import java.io.IOException
+import java.util.concurrent.TimeUnit
 
 private const val TAG = "CryptoDebug"
 
@@ -24,75 +25,67 @@ class CryptoRemoteMediator(
     private val db: CryptoDatabase
 ) : RemoteMediator<Int, CryptoEntity>() {
 
+    override suspend fun initialize(): InitializeAction {
+        // If the data is fresh (i.e < 5 minutes old), we skip the initial network call.
+        // If it's stale, we trigger a refresh.
+        val cacheTimeout = TimeUnit.MILLISECONDS.convert(5, TimeUnit.MINUTES)
+        val lastUpdated = db.dao().getCreationTime() ?: 0L
+        val now = System.currentTimeMillis()
+
+        return if (now - lastUpdated <= cacheTimeout) {
+            Log.d(TAG, "Mediator: Data is fresh (Last updated: ${(now - lastUpdated) / 1000}s ago). Skipping Initial Refresh.")
+            InitializeAction.SKIP_INITIAL_REFRESH
+        } else {
+            Log.d(TAG, "Mediator: Data is stale or missing. Launching Initial Refresh.")
+            InitializeAction.LAUNCH_INITIAL_REFRESH
+        }
+    }
+
     override suspend fun load(
         loadType: LoadType,
         state: PagingState<Int, CryptoEntity>
     ): MediatorResult {
         return try {
-            // Forcing a 2-second pause before every network call.
-            // so we never hit the 30 calls/min limit.
+            // Forcing a small pause to prevent rate limiting, but only on Appends
             if (loadType != LoadType.REFRESH) {
-                delay(2000)
+                delay(1000)
             }
 
-            Log.d(TAG, "Mediator: load() called with LoadType: $loadType, Query: '$query'")
+            Log.d(TAG, "Mediator: load() called with LoadType: $loadType")
 
             val page = when (loadType) {
-                LoadType.REFRESH -> {
-                    Log.d(TAG, "Mediator: Refreshing data (Page 1)")
-                    1
-                }
-                LoadType.PREPEND -> {
-                    return MediatorResult.Success(endOfPaginationReached = true)
-                }
+                LoadType.REFRESH -> 1
+                LoadType.PREPEND -> return MediatorResult.Success(endOfPaginationReached = true)
                 LoadType.APPEND -> {
                     val remoteKeys = getRemoteKeyForLastItem(state)
                     val nextKey = remoteKeys?.nextKey
-
                     if (nextKey == null) {
-                        Log.d(TAG, "Mediator: Append blocked (nextKey is null). End of pagination.")
                         return MediatorResult.Success(endOfPaginationReached = remoteKeys != null)
                     }
-
-                    Log.d(TAG, "Mediator: Appending data. Next Page: $nextKey")
                     nextKey
                 }
             }
 
+            // Logic to fetch from API
             val apiResponse = if (query.isEmpty()) {
-                Log.d(TAG, "Mediator: Fetching standard list from API (Page $page)")
                 val response = api.getCoins(page = page, perPage = state.config.pageSize)
                 response.map { it.toEntity(page) }
             } else {
                 if (loadType == LoadType.REFRESH) {
-                    Log.d(TAG, "Mediator: Searching Global API for '$query'")
                     val searchResult = api.searchGlobal(query)
                     val topIds = searchResult.coins.take(10).joinToString(",") { it.id }
-
                     if (topIds.isNotEmpty()) {
-                        Log.d(TAG, "Mediator: Found IDs [$topIds], fetching details...")
                         val details = api.getCoins(ids = topIds)
                         details.map { it.toEntity(1) }
-                    } else {
-                        Log.d(TAG, "Mediator: Search returned no results.")
-                        emptyList()
-                    }
-                } else {
-                    Log.d(TAG, "Mediator: Skipping pagination for search query.")
-                    emptyList()
-                }
+                    } else emptyList()
+                } else emptyList()
             }
-
-            Log.d(TAG, "Mediator: API Success. Received ${apiResponse.size} items.")
 
             db.withTransaction {
                 if (loadType == LoadType.REFRESH) {
                     if (query.isEmpty()) {
-                        Log.d(TAG, "Mediator: Clearing local database (Full Refresh)")
                         db.dao().clearRemoteKeys()
                         db.dao().clearCoins()
-                    } else {
-                        Log.d(TAG, "Mediator: Refreshing search results")
                     }
                 }
 
@@ -103,7 +96,6 @@ class CryptoRemoteMediator(
                     RemoteKeys(coinId = it.id, prevKey = prevKey, nextKey = nextKey)
                 }
 
-                Log.d(TAG, "Mediator: Saving ${keys.size} keys and items to Room DB")
                 db.dao().insertAllRemoteKeys(keys)
                 db.dao().insertAll(apiResponse)
             }
@@ -113,11 +105,7 @@ class CryptoRemoteMediator(
             Log.e(TAG, "Mediator Error (Network): ${e.localizedMessage}")
             MediatorResult.Error(e)
         } catch (e: HttpException) {
-            Log.e(TAG, "Mediator Error (HTTP): ${e.code()} - ${e.message}")
-
-            if (e.code() == 429) {
-                Log.e(TAG, "Mediator: RATE LIMIT HIT! Slowing down.")
-            }
+            Log.e(TAG, "Mediator Error (HTTP): ${e.code()}")
             MediatorResult.Error(e)
         }
     }

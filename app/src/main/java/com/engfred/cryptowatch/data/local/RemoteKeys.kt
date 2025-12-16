@@ -5,7 +5,10 @@ import androidx.room.PrimaryKey
 
 @Entity(tableName = "remote_keys")
 data class RemoteKeys(
-    @PrimaryKey val coinId: String,
+    @PrimaryKey
+    val coinId: String,
     val prevKey: Int?,
-    val nextKey: Int?
+    val nextKey: Int?,
+    // Track when this key was created to manage cache expiration
+    val lastUpdated: Long = System.currentTimeMillis()
 )

@@ -28,6 +28,7 @@ fun ErrorItem(
         Text(
             text = errorMessage,
             color = Color.Red,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
             style = MaterialTheme.typography.bodyLarge,
             modifier = Modifier.padding(bottom = 8.dp)
         )

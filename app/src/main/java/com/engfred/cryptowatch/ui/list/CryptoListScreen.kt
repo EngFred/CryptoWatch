@@ -16,12 +16,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.paging.LoadState
-import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemContentType
 import androidx.paging.compose.itemKey
 import com.engfred.cryptowatch.ui.list.components.CryptoListItem
 import com.engfred.cryptowatch.ui.list.components.ErrorItem
+import com.engfred.cryptowatch.ui.list.components.OfflineBanner
 
 @Composable
 fun CryptoListScreen(
@@ -57,64 +57,74 @@ fun CryptoListScreen(
             )
         )
 
-        Spacer(modifier = Modifier.height(8.dp))
+        val refreshState = coins.loadState.refresh
+        val isInitialLoading = refreshState is LoadState.Loading && coins.itemCount == 0
 
-        when (val refreshState = coins.loadState.refresh) {
-            is LoadState.Loading -> {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator(color = Color.White)
+        if (refreshState !is LoadState.Error) {
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+
+        if (isInitialLoading) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(color = Color.White)
+            }
+        } else {
+            LazyColumn(modifier = Modifier.fillMaxSize()) {
+                if (refreshState is LoadState.Loading) {
+                    item {
+                        LinearProgressIndicator(
+                            modifier = Modifier.fillMaxWidth(),
+                            color = Color.White
+                        )
+                    }
+                } else if (refreshState is LoadState.Error) {
+                    item {
+                        OfflineBanner(
+                            message = "Failed to refresh data. No internet connection!"
+                        )
+                    }
                 }
-            }
-            is LoadState.Error -> {
-                ErrorItem(
-                    errorMessage = refreshState.error.localizedMessage ?: "Unknown error.",
-                    onRetryClick = { coins.retry() },
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
-            is LoadState.NotLoading -> {
-                LazyColumn(modifier = Modifier.fillMaxSize()) {
-                    items(
-                        count = coins.itemCount,
-                        key = coins.itemKey { it.id },
-                        contentType = coins.itemContentType { "coin" }
-                    ) { index ->
-                        val coin = coins[index]
-                        if (coin != null) {
-                            CryptoListItem(coin, onCoinClick)
-                            HorizontalDivider(color = Color.DarkGray)
-                        }
-                    }
 
-                    when (coins.loadState.append) {
-                        is LoadState.Loading -> {
-                            item {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 16.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    CircularProgressIndicator(color = Color.White)
-                                }
-                            }
-                        }
-                        is LoadState.Error -> {
-                            item {
-                                ErrorItem(
-                                    errorMessage = "Failed to load more items.",
-                                    onRetryClick = { coins.retry() },
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(16.dp)
-                                )
-                            }
-                        }
-                        else -> Unit
+                items(
+                    count = coins.itemCount,
+                    key = coins.itemKey { it.id },
+                    contentType = coins.itemContentType { "coin" }
+                ) { index ->
+                    val coin = coins[index]
+                    if (coin != null) {
+                        CryptoListItem(coin, onCoinClick)
+                        HorizontalDivider(color = Color.DarkGray)
                     }
+                }
+
+                when (coins.loadState.append) {
+                    is LoadState.Loading -> {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 16.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator(color = Color.White)
+                            }
+                        }
+                    }
+                    is LoadState.Error -> {
+                        item {
+                            ErrorItem(
+                                errorMessage = "Failed to load more items.",
+                                onRetryClick = { coins.retry() },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp)
+                            )
+                        }
+                    }
+                    else -> Unit
                 }
             }
         }
