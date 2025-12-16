@@ -7,6 +7,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -23,6 +26,7 @@ import com.engfred.cryptowatch.ui.list.components.CryptoListItem
 import com.engfred.cryptowatch.ui.list.components.ErrorItem
 import com.engfred.cryptowatch.ui.list.components.OfflineBanner
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CryptoListScreen(
     viewModel: CryptoListViewModel = hiltViewModel(),
@@ -58,6 +62,9 @@ fun CryptoListScreen(
         )
 
         val refreshState = coins.loadState.refresh
+
+        val isRefreshing = refreshState is LoadState.Loading && coins.itemCount > 0
+
         val isInitialLoading = refreshState is LoadState.Loading && coins.itemCount == 0
 
         if (refreshState !is LoadState.Error) {
@@ -72,59 +79,72 @@ fun CryptoListScreen(
                 CircularProgressIndicator(color = Color.White)
             }
         } else {
-            LazyColumn(modifier = Modifier.fillMaxSize()) {
-                if (refreshState is LoadState.Loading) {
-                    item {
-                        LinearProgressIndicator(
-                            modifier = Modifier.fillMaxWidth(),
-                            color = Color.White
-                        )
-                    }
-                } else if (refreshState is LoadState.Error) {
-                    item {
-                        OfflineBanner(
-                            message = "Failed to refresh data. No internet connection!"
-                        )
-                    }
-                }
+            val pullRefreshState = rememberPullToRefreshState()
 
-                items(
-                    count = coins.itemCount,
-                    key = coins.itemKey { it.id },
-                    contentType = coins.itemContentType { "coin" }
-                ) { index ->
-                    val coin = coins[index]
-                    if (coin != null) {
-                        CryptoListItem(coin, onCoinClick)
-                        HorizontalDivider(color = Color.DarkGray)
-                    }
+            PullToRefreshBox(
+                isRefreshing = isRefreshing,
+                onRefresh = { coins.refresh() },
+                modifier = Modifier.fillMaxSize(),
+                state = pullRefreshState,
+                contentAlignment = Alignment.TopCenter,
+                indicator = {
+                    PullToRefreshDefaults.Indicator(
+                        state = pullRefreshState,
+                        isRefreshing = isRefreshing,
+                        containerColor = Color(0xFF1E1E1E),
+                        color = Color.White,
+                        modifier = Modifier.align(Alignment.TopCenter)
+                    )
                 }
+            ) {
+                LazyColumn(modifier = Modifier.fillMaxSize()) {
 
-                when (coins.loadState.append) {
-                    is LoadState.Loading -> {
+                    if (refreshState is LoadState.Error) {
                         item {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 16.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                CircularProgressIndicator(color = Color.White)
-                            }
-                        }
-                    }
-                    is LoadState.Error -> {
-                        item {
-                            ErrorItem(
-                                errorMessage = "Failed to load more items.",
-                                onRetryClick = { coins.retry() },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp)
+                            OfflineBanner(
+                                message = "Failed to refresh data. No internet connection!"
                             )
                         }
                     }
-                    else -> Unit
+
+                    items(
+                        count = coins.itemCount,
+                        key = coins.itemKey { it.id },
+                        contentType = coins.itemContentType { "coin" }
+                    ) { index ->
+                        val coin = coins[index]
+                        if (coin != null) {
+                            CryptoListItem(coin, onCoinClick)
+                            HorizontalDivider(color = Color.DarkGray)
+                        }
+                    }
+
+                    when (coins.loadState.append) {
+                        is LoadState.Loading -> {
+                            item {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 16.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    CircularProgressIndicator(color = Color.White)
+                                }
+                            }
+                        }
+                        is LoadState.Error -> {
+                            item {
+                                ErrorItem(
+                                    errorMessage = "Failed to load more items.",
+                                    onRetryClick = { coins.retry() },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp)
+                                )
+                            }
+                        }
+                        else -> Unit
+                    }
                 }
             }
         }
